@@ -70,12 +70,18 @@ note in the PR description if this flag was needed and why)
   code block against src/, don't paraphrase from memory or from doc comments.
 - If something is genuinely unclear from the diff, mark it "needs
   verification" rather than guessing.
+- For any signed action (orders, transfers, batch operations), never describe
+  a timeout or ambiguous response as "safe to retry". The action may have
+  been accepted even though the response didn't arrive. Always describe
+  reconciling the actual on-chain/exchange state before resubmitting with a
+  fresh nonce.
 - Keep the SKILL.md + references/ split as-is. If a single reference file
   would exceed roughly 500 lines after your edit, split further rather than
   letting it grow unbounded.
 - If nothing in the skill's actual scope changed (e.g. the diff only touched
   excluded modules like hyperevm or staking), say so in the PR description
   and don't touch the skill files.
+
 
 ## PR description requirements
 

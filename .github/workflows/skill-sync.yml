@@ -1,0 +1,53 @@
+name: Sync Rust SDK Skill
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "Cargo.toml"
+      - "abi/**"
+      - "examples/**"
+
+jobs:
+  file-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute diff since last skill sync
+        id: diff
+        run: |
+          LAST_SYNC=$(git log --grep="skill-sync" --format="%H" -n 1 || echo "")
+          RANGE="${LAST_SYNC:-HEAD~1}..HEAD"
+          echo "range=$RANGE" >> "$GITHUB_OUTPUT"
+          git diff "$RANGE" -- src/ Cargo.toml abi/ examples/ > diff.txt
+          if [ -s diff.txt ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create sync issue
+        if: steps.diff.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_RANGE: ${{ steps.diff.outputs.range }}
+        run: |
+          BODY=$(cat <<EOF
+          Follow the instructions in \`skills/hyperliquid-rust-sdk/SYNC_PROMPT.md\` in full.
+
+          Diff range to check: \`$COMMIT_RANGE\`
+          Run \`git diff $COMMIT_RANGE -- src/ Cargo.toml abi/ examples/\` yourself to see what changed.
+          EOF
+          )
+          ISSUE_URL=$(gh issue create \
+            --title "skill-sync: update hyperliquid-rust-sdk skill" \
+            --body "$BODY")
+          ISSUE_NUM=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
+          gh issue edit "$ISSUE_NUM" --add-assignee copilot-swe-agent
